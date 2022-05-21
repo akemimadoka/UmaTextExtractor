@@ -1,0 +1,7 @@
+[requires]
+sqlite3/3.38.1
+Cafe.TextUtils/0.1
+rapidjson/cci.20211112
+
+[generators]
+cmake
