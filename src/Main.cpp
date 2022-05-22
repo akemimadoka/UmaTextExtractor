@@ -4,6 +4,7 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <unordered_map>
 
 #include <Cafe/TextUtils/Misc.h>
@@ -97,8 +98,7 @@ int main(int argc, char** argv)
 		if (!sqlite3_prepare_v2(db, "select category, [index], text from text_data", -1, &stmt,
 		                        nullptr))
 		{
-			std::unordered_map<std::size_t, std::unordered_map<std::size_t, std::string>>
-			    textDataMap;
+			std::map<std::size_t, std::map<std::size_t, std::string>> textDataMap;
 
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
@@ -149,8 +149,7 @@ int main(int argc, char** argv)
 		                        "select character_id, voice_id, text from character_system_text",
 		                        -1, &stmt, nullptr))
 		{
-			std::unordered_map<std::size_t, std::unordered_map<std::size_t, std::string>>
-			    characterSystemTextMap;
+			std::map<std::size_t, std::map<std::size_t, std::string>> characterSystemTextMap;
 
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
@@ -200,7 +199,7 @@ int main(int argc, char** argv)
 		if (!sqlite3_prepare_v2(db, "select id, message from race_jikkyo_comment", -1, &stmt,
 		                        nullptr))
 		{
-			std::unordered_map<std::size_t, std::string> raceJikkyoCommentMap;
+			std::map<std::size_t, std::string> raceJikkyoCommentMap;
 
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
@@ -241,7 +240,7 @@ int main(int argc, char** argv)
 		if (!sqlite3_prepare_v2(db, "select id, message from race_jikkyo_message", -1, &stmt,
 		                        nullptr))
 		{
-			std::unordered_map<std::size_t, std::string> raceJikkyoMessageMap;
+			std::map<std::size_t, std::string> raceJikkyoMessageMap;
 
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
