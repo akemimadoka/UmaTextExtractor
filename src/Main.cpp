@@ -14,11 +14,14 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/writer.h>
 
+using namespace std::literals;
+
 int main(int argc, char** argv)
 {
-	if (argc != 3 && argc != 4)
+	if (argc < 3 || argc > 5)
 	{
-		std::cout << "Usage: " << argv[0] << " <master database file> <output file> [hash path]"
+		std::cout << "Usage: " << argv[0]
+		          << " <master database file> <output file> [hash path] [old extracted files path]"
 		          << std::endl;
 		return 1;
 	}
@@ -72,6 +75,8 @@ int main(int argc, char** argv)
 		}
 	}
 
+	const auto oldExtractedPath = argc == 5 ? argv[4] : nullptr;
+
 	const auto mayGetLocalizedText = [&](const char* text) -> const std::string* {
 		if (!hashMap.empty())
 		{
@@ -100,6 +105,46 @@ int main(int argc, char** argv)
 		{
 			std::map<std::size_t, std::map<std::size_t, std::string>> textDataMap;
 
+			if (oldExtractedPath)
+			{
+				std::ifstream input(oldExtractedPath + "/text_data.json"s);
+
+				rapidjson::IStreamWrapper wrapper(input);
+				rapidjson::Document document;
+
+				document.ParseStream(wrapper);
+
+				if (document.HasParseError() || !document.IsObject())
+				{
+					std::cout << "Skip malformed file " << oldExtractedPath << "/text_data.json"
+					          << std::endl;
+				}
+
+				for (const auto& [category, categoryValue] : document.GetObject())
+				{
+					if (!categoryValue.IsObject())
+					{
+						std::cout << "Skip malformed file " << oldExtractedPath << "/text_data.json"
+						          << std::endl;
+						continue;
+					}
+
+					for (const auto& [index, indexValue] : categoryValue.GetObject())
+					{
+						if (!indexValue.IsString())
+						{
+							std::cout << "Skip malformed file " << oldExtractedPath
+							          << "/text_data.json" << std::endl;
+							continue;
+						}
+
+						const auto text = indexValue.GetString();
+						textDataMap[std::atoll(category.GetString())].emplace(
+						    std::atoll(index.GetString()), text);
+					}
+				}
+			}
+
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
 				const auto category = sqlite3_column_int64(stmt, 0);
@@ -107,11 +152,11 @@ int main(int argc, char** argv)
 				const auto text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
 				if (const auto localizedText = mayGetLocalizedText(text))
 				{
-					textDataMap[category].emplace(index, *localizedText);
+					textDataMap[category].try_emplace(index, *localizedText);
 				}
 				else
 				{
-					textDataMap[category].emplace(index, text);
+					textDataMap[category].try_emplace(index, text);
 				}
 			}
 
@@ -151,6 +196,46 @@ int main(int argc, char** argv)
 		{
 			std::map<std::size_t, std::map<std::size_t, std::string>> characterSystemTextMap;
 
+			if (oldExtractedPath)
+			{
+				std::ifstream input(oldExtractedPath + "/character_system_text.json"s);
+
+				rapidjson::IStreamWrapper wrapper(input);
+				rapidjson::Document document;
+
+				document.ParseStream(wrapper);
+
+				if (document.HasParseError() || !document.IsObject())
+				{
+					std::cout << "Skip malformed file " << oldExtractedPath
+					          << "/character_system_text.json" << std::endl;
+				}
+
+				for (const auto& [characterId, characterIdValue] : document.GetObject())
+				{
+					if (!characterIdValue.IsObject())
+					{
+						std::cout << "Skip malformed file " << oldExtractedPath
+						          << "/character_system_text.json" << std::endl;
+						continue;
+					}
+
+					for (const auto& [voiceId, voiceIdValue] : characterIdValue.GetObject())
+					{
+						if (!voiceIdValue.IsString())
+						{
+							std::cout << "Skip malformed file " << oldExtractedPath
+							          << "/character_system_text.json" << std::endl;
+							continue;
+						}
+
+						const auto text = voiceIdValue.GetString();
+						characterSystemTextMap[std::atoll(characterId.GetString())].emplace(
+						    std::atoll(voiceId.GetString()), text);
+					}
+				}
+			}
+
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
 				const auto characterId = sqlite3_column_int64(stmt, 0);
@@ -158,11 +243,11 @@ int main(int argc, char** argv)
 				const auto text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
 				if (const auto localizedText = mayGetLocalizedText(text))
 				{
-					characterSystemTextMap[characterId].emplace(voiceId, *localizedText);
+					characterSystemTextMap[characterId].try_emplace(voiceId, *localizedText);
 				}
 				else
 				{
-					characterSystemTextMap[characterId].emplace(voiceId, text);
+					characterSystemTextMap[characterId].try_emplace(voiceId, text);
 				}
 			}
 
@@ -201,17 +286,38 @@ int main(int argc, char** argv)
 		{
 			std::map<std::size_t, std::string> raceJikkyoCommentMap;
 
+			if (oldExtractedPath)
+			{
+				std::ifstream input(oldExtractedPath + "/race_jikkyo_comment.json"s);
+
+				rapidjson::IStreamWrapper wrapper(input);
+				rapidjson::Document document;
+
+				document.ParseStream(wrapper);
+
+				if (document.HasParseError() || !document.IsObject())
+				{
+					std::cout << "Skip malformed file " << oldExtractedPath
+					          << "/race_jikkyo_comment.json" << std::endl;
+				}
+
+				for (const auto& [id, message] : document.GetObject())
+				{
+					raceJikkyoCommentMap.emplace(std::atoll(id.GetString()), message.GetString());
+				}
+			}
+
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
 				const auto id = sqlite3_column_int64(stmt, 0);
 				const auto message = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
 				if (const auto localizedText = mayGetLocalizedText(message))
 				{
-					raceJikkyoCommentMap.emplace(id, *localizedText);
+					raceJikkyoCommentMap.try_emplace(id, *localizedText);
 				}
 				else
 				{
-					raceJikkyoCommentMap.emplace(id, message);
+					raceJikkyoCommentMap.try_emplace(id, message);
 				}
 			}
 
@@ -242,17 +348,38 @@ int main(int argc, char** argv)
 		{
 			std::map<std::size_t, std::string> raceJikkyoMessageMap;
 
+			if (oldExtractedPath)
+			{
+				std::ifstream input(oldExtractedPath + "/race_jikkyo_comment.json"s);
+
+				rapidjson::IStreamWrapper wrapper(input);
+				rapidjson::Document document;
+
+				document.ParseStream(wrapper);
+
+				if (document.HasParseError() || !document.IsObject())
+				{
+					std::cout << "Skip malformed file " << oldExtractedPath
+					          << "/race_jikkyo_comment.json" << std::endl;
+				}
+
+				for (const auto& [id, message] : document.GetObject())
+				{
+					raceJikkyoMessageMap.emplace(std::atoll(id.GetString()), message.GetString());
+				}
+			}
+
 			while (sqlite3_step(stmt) == SQLITE_ROW)
 			{
 				const auto id = sqlite3_column_int64(stmt, 0);
 				const auto text = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
 				if (const auto localizedText = mayGetLocalizedText(text))
 				{
-					raceJikkyoMessageMap.emplace(id, *localizedText);
+					raceJikkyoMessageMap.try_emplace(id, *localizedText);
 				}
 				else
 				{
-					raceJikkyoMessageMap.emplace(id, text);
+					raceJikkyoMessageMap.try_emplace(id, text);
 				}
 			}
 
